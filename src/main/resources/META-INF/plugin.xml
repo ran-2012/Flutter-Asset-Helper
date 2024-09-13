@@ -1,18 +1,65 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
     <id>dev.ran.plugins.flutterex</id>
-    <name>Flutter Extension</name>
-    <vendor>JetBrains</vendor>
+    <name>Flutter Asset Helper</name>
+    <vendor>Ran</vendor>
 
     <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.lang</depends>
+    <depends>com.intellij.modules.java-capable</depends>
+    <depends>Dart</depends>
 
     <resource-bundle>messages.MyBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow factoryClass="dev.ran.plugins.flutterex.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>
+
+        <completion.contributor language="Dart"
+                                order="first"
+                                implementationClass="dev.ran.plugins.flutterex.AssetFileNameCompletionContributor">
+        </completion.contributor>
+
+        <gotoSymbolContributor
+                implementation="dev.ran.plugins.flutterex.AssetFileNameSymbolContributor"/>
+
+        <typedHandler implementation="dev.ran.plugins.flutterex.CustomTypedHandlerDelegate" order="first"/>
     </extensions>
 
     <applicationListeners>
-        <listener class="dev.ran.plugins.flutterex.listeners.MyApplicationActivationListener" topic="com.intellij.openapi.application.ApplicationActivationListener"/>
+        <listener class="dev.ran.plugins.flutterex.listeners.MyApplicationActivationListener"
+                  topic="com.intellij.openapi.application.ApplicationActivationListener"/>
+
+        <listener class="dev.ran.plugins.flutterex.listeners.AssetFileListener"
+                  topic="com.intellij.openapi.vfs.newvfs.BulkFileListener"/>
     </applicationListeners>
+
+    <!--    From AssetsRefGenerator    -->
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Add your extensions here -->
+        <psi.referenceContributor language="Dart"
+                                  implementation="com.shenyong.flutter.psi.dart.DartAssetReferenceContributor"/>
+        <lang.documentationProvider language="Dart"
+                                    implementationClass="com.shenyong.flutter.psi.FlutterAssetDocumentationProvider"
+                                    order="first"/>
+        <codeInsight.lineMarkerProvider language="Dart"
+                                        implementationClass="com.shenyong.flutter.psi.dart.DartAssetLineMarkerProvider"/>
+
+        <!-- plugin settings -->
+        <applicationConfigurable parentId="tools" instance="com.shenyong.flutter.settings.PluginSettingsConfigurable"
+                                 id="com.shenyong.flutter.settings.PluginSettingsConfigurable"
+                                 displayName="Flutter Assets Ref Generator"/>
+        <applicationService serviceImplementation="com.shenyong.flutter.settings.PluginSettingsState"/>
+    </extensions>
+
+    <actions>
+        <!-- Add your actions here -->
+        <action id="FlutterAssetsRefGenerator"
+                class="com.shenyong.flutter.AssetsRefGenerator"
+                text="Generate Flutter Assets Reference"
+                description="Flutter assets ref generator">
+            <add-to-group group-id="ToolbarRunGroup" anchor="last"/>
+        </action>
+    </actions>
+
 </idea-plugin>

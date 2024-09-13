@@ -14,6 +14,14 @@ plugins {
 group = providers.gradleProperty("pluginGroup").get()
 version = providers.gradleProperty("pluginVersion").get()
 
+sourceSets {
+    main {
+        java {
+            srcDirs("src/main/gen")
+        }
+    }
+}
+
 // Set the JVM language level used to build the project.
 kotlin {
     jvmToolchain(17)
@@ -42,12 +50,21 @@ dependencies {
 
         // Plugin Dependencies. Uses `platformPlugins` property from the gradle.properties file for plugin from JetBrains Marketplace.
         plugins(providers.gradleProperty("platformPlugins").map { it.split(',') })
+        plugin("Dart:233.15325.11")
+        plugin("org.jetbrains.plugins.yaml:233.13135.68")
 
         instrumentationTools()
         pluginVerifier()
         zipSigner()
         testFramework(TestFrameworkType.Platform)
     }
+
+    // kotlin coroutine
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.9.0")
+
+    // Thumbnail
+    implementation("net.coobird:thumbnailator:0.4.20")
 }
 
 // Configure IntelliJ Platform Gradle Plugin - read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-extension.html
@@ -98,7 +115,8 @@ intellijPlatform {
         // The pluginVersion is based on the SemVer (https://semver.org) and supports pre-release labels, like 2.1.7-alpha.3
         // Specify pre-release label to publish the plugin in a custom Release Channel automatically. Read more:
         // https://plugins.jetbrains.com/docs/intellij/deployment.html#specifying-a-release-channel
-        channels = providers.gradleProperty("pluginVersion").map { listOf(it.substringAfter('-', "").substringBefore('.').ifEmpty { "default" }) }
+        channels = providers.gradleProperty("pluginVersion")
+            .map { listOf(it.substringAfter('-', "").substringBefore('.').ifEmpty { "default" }) }
     }
 
     pluginVerification {
@@ -154,4 +172,16 @@ intellijPlatformTesting {
             }
         }
     }
+}
+
+tasks.register("publishPluginLocal") {
+    group = "publish"
+    description = "Publish the plugin to relase directory"
+    dependsOn("buildPlugin")
+
+    // copy file from build/libs to ./release
+    val pluginFile = file("build/libs/${project.name}-${project.version}.jar")
+    val releaseDir = file("release")
+    releaseDir.mkdirs()
+    pluginFile.copyTo(file("release/${pluginFile.name}"), true)
 }
