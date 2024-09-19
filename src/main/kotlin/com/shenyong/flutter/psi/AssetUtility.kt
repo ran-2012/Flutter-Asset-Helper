@@ -11,8 +11,10 @@ import com.intellij.psi.search.FilenameIndex
 import com.intellij.psi.search.ProjectScope
 import com.intellij.ui.icons.CachedImageIcon
 import com.jetbrains.rd.util.AtomicInteger
+import com.jetbrains.rd.util.ConcurrentHashMap
 import net.coobird.thumbnailator.Thumbnails
 import java.awt.image.BufferedImage
+import java.awt.image.ImageObserver
 import javax.swing.Icon
 import javax.swing.ImageIcon
 
@@ -20,6 +22,9 @@ object AssetUtility {
     val log = Logger.getInstance(this::class.java)
 
     private var thumbNailSize = AtomicInteger(16)
+
+    private var cachedImageMap = ConcurrentHashMap<String, CachedImageIcon>()
+    private var cachedIconMap = ConcurrentHashMap<String, Icon>()
 
     @JvmStatic
     fun setThumbNailSize(size: Int) {
@@ -47,14 +52,55 @@ object AssetUtility {
     }
 
     @JvmStatic
-    fun loadSvg(file: VirtualFile): Icon {
+    fun loadSvg(file: VirtualFile, forceUpdate: Boolean = false): Icon {
         return ReadAction.compute<Icon, Exception> {
             try {
-                val cachedImage = CachedImageIcon(file.toNioPath().toUri().toURL(), null)
+                if (!file.exists()) {
+                    return@compute AllIcons.FileTypes.Image
+                }
 
-                // TODO: Find a better way to scale the image
-                val scaled = cachedImage.getRealImage()?.getScaledInstance(16, 16, BufferedImage.SCALE_SMOOTH);
+                // TODO: Invalidate cache when file is updated using AssetFileListener
 
+                val cachedIcon = cachedIconMap[file.path]
+                if (cachedIcon != null) {
+                    return@compute cachedIcon
+                }
+
+                var cachedImage = cachedImageMap[file.path]
+                if (cachedImage == null) {
+                    cachedImage = CachedImageIcon(file.toNioPath().toUri().toURL(), null)
+                    cachedImageMap[file.path] = cachedImage
+                }
+
+                val imageObserver = ImageObserver { img, infoflags, x, y, width, height -> true }
+
+                val width =
+                    cachedImage.getRealImage()?.getWidth(imageObserver)
+                val height =
+                    cachedImage.getRealImage()?.getHeight(imageObserver)
+
+                if (width == null || height == null) {
+                    return@compute AllIcons.FileTypes.Image
+                }
+
+                var realWidth = 16
+                var realHeight = 16
+                if (width > height) {
+                    realHeight = height * realWidth / width
+                    if (realHeight < 2) {
+                        realHeight = 2
+                    }
+                } else {
+                    realWidth = width * realHeight / height
+                    if (realWidth < 2) {
+                        realWidth = 2
+                    }
+                }
+
+                val scaled =
+                    cachedImage.getRealImage()?.getScaledInstance(realWidth, realHeight, BufferedImage.SCALE_SMOOTH);
+
+                cachedIconMap[file.path] = ImageIcon(scaled)
                 ImageIcon(scaled)
             } catch (e: Exception) {
                 log.error(e)

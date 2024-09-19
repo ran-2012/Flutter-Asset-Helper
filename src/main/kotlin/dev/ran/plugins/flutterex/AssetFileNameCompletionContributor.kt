@@ -56,7 +56,7 @@ class AssetFileNameCompletionContributor : CompletionContributor() {
     private fun getFileIcon(file: VirtualFile): Icon {
         return if (file.isDirectory) AllIcons.Nodes.Folder
         else if (AssetUtility.isSvg(file)) {
-            AssetUtility.loadSvg(file)
+            AssetUtility.loadSvg(file, false)
         } else if (AssetUtility.isImage(file)) AssetUtility.loadImage(file)
         else AllIcons.FileTypes.Any_type
     }

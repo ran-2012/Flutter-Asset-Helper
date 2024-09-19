@@ -1,6 +1,7 @@
 package com.shenyong.flutter.psi;
 
 import com.intellij.lang.documentation.AbstractDocumentationProvider;
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.util.io.FileUtilRt;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
@@ -12,6 +13,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.yaml.psi.impl.YAMLPlainTextImpl;
 
+import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
@@ -34,26 +36,30 @@ public class FlutterAssetDocumentationProvider extends AbstractDocumentationProv
     }
 
     @Override
+    public @Nullable Image getLocalImageForElement(@NotNull PsiElement element, @NotNull String imageSpec) {
+        return super.getLocalImageForElement(element, imageSpec);
+    }
+
+    @Override
     public @Nullable String generateDoc(@NotNull PsiElement element, @Nullable PsiElement originalElement) {
-        if (originalElement == null) {
-            return null;
-        }
-        String originalText = originalElement.getText();
-        boolean isValidYamlEle = element instanceof YAMLPlainTextImpl;
-        boolean isValidDartEle = originalText.matches(DartAssetReferenceContributor.ASSET_PATTERN);
-        if (!isValidDartEle && !isValidYamlEle) {
-            return null;
-        }
-        // 可能存在多个资源变体
-        VirtualFile[] assetFiles = AssetUtility.getAssetVirtualFile(originalElement);
-        if (assetFiles == null || assetFiles.length == 0) {
-            return null;
-        }
-        // 根据尺寸从小到大显示
-        List<VirtualFile> assetList = Arrays.asList(assetFiles);
-        assetList.sort(new Comparator<VirtualFile>() {
-            @Override
-            public int compare(VirtualFile o1, VirtualFile o2) {
+        return ReadAction.compute(() -> {
+            if (originalElement == null) {
+                return null;
+            }
+            String originalText = originalElement.getText();
+            boolean isValidYamlEle = element instanceof YAMLPlainTextImpl;
+            boolean isValidDartEle = originalText.matches(DartAssetReferenceContributor.ASSET_PATTERN);
+            if (!isValidDartEle && !isValidYamlEle) {
+                return null;
+            }
+            // 可能存在多个资源变体
+            VirtualFile[] assetFiles = AssetUtility.getAssetVirtualFile(originalElement);
+            if (assetFiles == null || assetFiles.length == 0) {
+                return null;
+            }
+
+            List<VirtualFile> assetList = Arrays.asList(assetFiles);
+            assetList.sort((o1, o2) -> {
                 try {
                     FastImageInfo imgInfo1 = new FastImageInfo(new File((o1.getPath())));
                     FastImageInfo imgInfo2 = new FastImageInfo(new File((o2.getPath())));
@@ -61,56 +67,58 @@ public class FlutterAssetDocumentationProvider extends AbstractDocumentationProv
                 } catch (IOException e) {
                     return 0;
                 }
-            }
-        });
-        StringBuilder sb = new StringBuilder();
-        for (VirtualFile assetFile: assetList) {
-            File imgFile = new File(assetFile.getPath());
-            String uri = imgFile.toURI().toString();
-            FastImageInfo imageInfo;
-            try {
-                imageInfo = new FastImageInfo(imgFile);
-            } catch (IOException e) {
-                return null;
-            }
-            int rawW = imageInfo.getWidth();
-            int rawH = imageInfo.getHeight();
-            ShowSize size = getShowSize(rawW, rawH);
-            sb.append("<div class='definition'><pre>");
-            sb.append(getDefinitionStr(assetFile));
-            sb.append("</pre></div");
-            sb.append("<div class='content' width=\"").append(size.width).append("px\" height=\"").append(size.height).append("\">");
-            File tmpThumbnail;
-            if (Math.max(rawW, rawH) <= MAX_RAW_SIZE || Math.min(rawW, rawH) <= 0) { // 有可能读取尺寸异常
-                sb.append("  <img style=\"width: auto;height: auto;max-width: 100%;max-height: 100%;\" src=\"").append(uri).append("\">");
-            } else {
+            });
+
+            // 根据尺寸从小到大显示
+            StringBuilder sb = new StringBuilder();
+            for (VirtualFile assetFile : assetList) {
+                File imgFile = new File(assetFile.getPath());
+                String uri = imgFile.toURI().toString();
+                FastImageInfo imageInfo;
                 try {
-                    tmpThumbnail = getTmpThumbnail(assetFile);
-                    if (!tmpThumbnail.exists()) {
-                        // 加载缩小的图片，以节省内存
-                        Thumbnails.of(imgFile).size(size.width, size.height).toFile(tmpThumbnail);
-                    }
-                    String thumbnailUri = tmpThumbnail.toURI().toString();
-                    sb.append("  <img style=\"width: auto;height: auto;max-width: 100%;max-height: 100%;\" src=\"")
-                            .append(thumbnailUri).append("\">");
+                    imageInfo = new FastImageInfo(imgFile);
                 } catch (IOException e) {
-                    e.printStackTrace();
-                    sb.append("Failed to show preview.");
+                    return null;
                 }
-            }
-            sb.append("</div>");
-            sb.append("<table class='sections'>");
-            if (Math.min(rawW, rawH) > 0) {
-                if (rawW > size.width) {
-                    addKeyValueSection("real size: ", rawW + "x" + rawH + " px", sb);
-                    addKeyValueSection("preview size: ", size.width + "x" + size.height + " px", sb);
+                int rawW = imageInfo.getWidth();
+                int rawH = imageInfo.getHeight();
+                ShowSize size = getShowSize(rawW, rawH);
+                sb.append("<div class='definition'><pre>");
+                sb.append(getDefinitionStr(assetFile));
+                sb.append("</pre></div");
+                sb.append("<div class='content' width=\"").append(size.width).append("px\" height=\"").append(size.height).append("\">");
+                File tmpThumbnail;
+                if (Math.max(rawW, rawH) <= MAX_RAW_SIZE || Math.min(rawW, rawH) <= 0) { // 有可能读取尺寸异常
+                    sb.append("  <img style=\"width: auto;height: auto;max-width: 100%;max-height: 100%;\" src=\"").append(uri).append("\">");
                 } else {
-                    addKeyValueSection("size: ", rawW + "x" + rawH + " px", sb);
+                    try {
+                        tmpThumbnail = getTmpThumbnail(assetFile);
+                        if (!tmpThumbnail.exists()) {
+                            // 加载缩小的图片，以节省内存
+                            Thumbnails.of(imgFile).size(size.width, size.height).toFile(tmpThumbnail);
+                        }
+                        String thumbnailUri = tmpThumbnail.toURI().toString();
+                        sb.append("  <img style=\"width: auto;height: auto;max-width: 100%;max-height: 100%;\" src=\"")
+                                .append(thumbnailUri).append("\">");
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        sb.append("Failed to show preview.");
+                    }
                 }
+                sb.append("</div>");
+                sb.append("<table class='sections'>");
+                if (Math.min(rawW, rawH) > 0) {
+                    if (rawW > size.width) {
+                        addKeyValueSection("real size: ", rawW + "x" + rawH + " px", sb);
+                        addKeyValueSection("preview size: ", size.width + "x" + size.height + " px", sb);
+                    } else {
+                        addKeyValueSection("size: ", rawW + "x" + rawH + " px", sb);
+                    }
+                }
+                sb.append("</table>");
             }
-            sb.append("</table>");
-        }
-        return sb.toString();
+            return sb.toString();
+        });
     }
 
     private String getDefinitionStr(VirtualFile assetFile) {

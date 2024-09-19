@@ -54,7 +54,7 @@ public class DartAssetLineMarkerProvider extends RelatedItemLineMarkerProvider {
         VirtualFile file = psiFiles.get(0).getVirtualFile();
         Icon icon;
         if(AssetUtility.isSvg(file)){
-            icon = AssetUtility.loadSvg(file);
+            icon = AssetUtility.loadSvg(file, false);
         }else{
             icon = AssetUtility.loadThumbnail(file);
         }
