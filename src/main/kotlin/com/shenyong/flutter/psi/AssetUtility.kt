@@ -12,7 +12,6 @@ import com.intellij.psi.search.ProjectScope
 import com.intellij.ui.icons.CachedImageIcon
 import com.jetbrains.rd.util.AtomicInteger
 import com.jetbrains.rd.util.ConcurrentHashMap
-import net.coobird.thumbnailator.Thumbnails
 import java.awt.image.BufferedImage
 import java.awt.image.ImageObserver
 import javax.swing.Icon
@@ -111,19 +110,7 @@ object AssetUtility {
 
     @JvmStatic
     fun loadThumbnail(file: VirtualFile): Icon {
-        return ReadAction.compute<Icon, Exception> {
-            try {
-                val bufferedInputStream = file.inputStream.buffered()
-                val thumb = Thumbnails.of(bufferedInputStream)
-                    .size(thumbNailSize.get(), thumbNailSize.get())
-                    .asBufferedImage()
-
-                val icon = ImageIcon(thumb)
-                icon
-            } catch (e: Exception) {
-                AllIcons.FileTypes.Image
-            }
-        }
+        return AllIcons.FileTypes.Image
     }
 
     @JvmStatic

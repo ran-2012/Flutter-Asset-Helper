@@ -8,7 +8,6 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.impl.file.PsiBinaryFileImpl;
 import com.shenyong.flutter.image.FastImageInfo;
 import com.shenyong.flutter.psi.dart.DartAssetReferenceContributor;
-import net.coobird.thumbnailator.Thumbnails;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.yaml.psi.impl.YAMLPlainTextImpl;
@@ -93,10 +92,6 @@ public class FlutterAssetDocumentationProvider extends AbstractDocumentationProv
                 } else {
                     try {
                         tmpThumbnail = getTmpThumbnail(assetFile);
-                        if (!tmpThumbnail.exists()) {
-                            // 加载缩小的图片，以节省内存
-                            Thumbnails.of(imgFile).size(size.width, size.height).toFile(tmpThumbnail);
-                        }
                         String thumbnailUri = tmpThumbnail.toURI().toString();
                         sb.append("  <img style=\"width: auto;height: auto;max-width: 100%;max-height: 100%;\" src=\"")
                                 .append(thumbnailUri).append("\">");

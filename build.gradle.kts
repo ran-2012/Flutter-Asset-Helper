@@ -62,9 +62,6 @@ dependencies {
     // kotlin coroutine
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.9.0")
-
-    // Thumbnail
-    implementation("net.coobird:thumbnailator:0.4.20")
 }
 
 // Configure IntelliJ Platform Gradle Plugin - read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-extension.html
@@ -177,11 +174,14 @@ intellijPlatformTesting {
 tasks.register("publishPluginLocal") {
     group = "publish"
     description = "Publish the plugin to relase directory"
-    dependsOn("buildPlugin")
+    dependsOn("build")
 
-    // copy file from build/libs to ./release
-    val pluginFile = file("build/libs/${project.name}-${project.version}.jar")
-    val releaseDir = file("release")
-    releaseDir.mkdirs()
-    pluginFile.copyTo(file("release/${pluginFile.name}"), true)
+    doLast{
+        println("Publishing plugin to release directory")
+        // copy file from build/libs to ./release
+        val pluginFile = file("build/libs/${project.name}-${project.version}.jar")
+        val releaseDir = file("release")
+        releaseDir.mkdirs()
+        pluginFile.copyTo(file("release/${pluginFile.name}"), true)
+    }
 }
