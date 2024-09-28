@@ -8,11 +8,11 @@
     <depends>com.intellij.modules.lang</depends>
     <depends>com.intellij.modules.java-capable</depends>
     <depends>Dart</depends>
+    <depends>org.jetbrains.kotlin</depends>
 
     <resource-bundle>messages.MyBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow factoryClass="dev.ran.plugins.flutterex.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>
 
         <completion.contributor language="Dart"
                                 order="first"
@@ -60,6 +60,17 @@
                 description="Flutter assets ref generator">
             <add-to-group group-id="ToolbarRunGroup" anchor="last"/>
         </action>
+
+        <action class="dev.ran.plugins.flutterex.actions.ParseKotlinDataClass"
+                text="Parse Kotlin Data Class"
+
+                icon="AllIcons.General.AutoscrollToSource">
+            <add-to-group group-id="EditorPopupMenu" anchor="first"/>
+        </action>
     </actions>
 
+    <applicationListeners>
+        <listener class="MyApplicationComponent" topic="com.intellij.ide.ui.LafManagerListener"/>
+        <listener class="MyApplicationComponent" topic="com.intellij.openapi.application.ApplicationActivationListener"/>
+    </applicationListeners>
 </idea-plugin>
