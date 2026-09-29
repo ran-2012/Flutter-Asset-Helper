@@ -2,11 +2,13 @@ package dev.ran.plugins.flutterex
 
 import com.intellij.ide.highlighter.XmlFileType
 import com.intellij.openapi.components.service
+import com.intellij.openapi.vfs.newvfs.impl.VfsRootAccess
 import com.intellij.psi.xml.XmlFile
 import com.intellij.testFramework.TestDataPath
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.PsiErrorElementUtil
 import dev.ran.plugins.flutterex.services.MyProjectService
+import java.nio.file.Path
 
 @TestDataPath("\$CONTENT_ROOT/src/test/testData")
 class MyPluginTest : BasePlatformTestCase() {
@@ -26,6 +28,7 @@ class MyPluginTest : BasePlatformTestCase() {
     }
 
     fun testRename() {
+        VfsRootAccess.allowRootAccess(testRootDisposable, Path.of(testDataPath).toAbsolutePath().normalize().toString())
         myFixture.testRename("foo.xml", "foo_after.xml", "a2")
     }
 

@@ -1,6 +1,7 @@
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.gradle.api.tasks.compile.JavaCompile
 
 plugins {
     id("java") // Java support
@@ -24,7 +25,7 @@ sourceSets {
 
 // Set the JVM language level used to build the project.
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
 }
 
 // Configure project's dependencies
@@ -43,17 +44,17 @@ dependencies {
 
     // IntelliJ Platform Gradle Plugin Dependencies Extension - read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-dependencies-extension.html
     intellijPlatform {
-        create(providers.gradleProperty("platformType"), providers.gradleProperty("platformVersion"))
+        intellijIdea(providers.gradleProperty("platformVersion"))
 
         // Plugin Dependencies. Uses `platformBundledPlugins` property from the gradle.properties file for bundled IntelliJ Platform plugins.
         bundledPlugins(providers.gradleProperty("platformBundledPlugins").map { it.split(',') })
+        bundledPlugin("org.jetbrains.plugins.yaml")
 
         // Plugin Dependencies. Uses `platformPlugins` property from the gradle.properties file for plugin from JetBrains Marketplace.
         plugins(providers.gradleProperty("platformPlugins").map { it.split(',') })
-        plugin("Dart:233.15325.11")
-        plugin("org.jetbrains.plugins.yaml:233.13135.68")
+        plugin("Dart:509.0.0")
+        plugin("io.flutter:96.0.0")
 
-        instrumentationTools()
         pluginVerifier()
         zipSigner()
         testFramework(TestFrameworkType.Platform)
@@ -141,6 +142,10 @@ kover {
 }
 
 tasks {
+    withType<JavaCompile>().configureEach {
+        options.encoding = "UTF-8"
+    }
+
     wrapper {
         gradleVersion = providers.gradleProperty("gradleVersion").get()
     }
@@ -171,17 +176,16 @@ intellijPlatformTesting {
     }
 }
 
-tasks.register("publishPluginLocal") {
-    group = "publish"
-    description = "Publish the plugin to relase directory"
-    dependsOn("build")
+val cleanLocalReleasePackages = tasks.register<Delete>("cleanLocalReleasePackages") {
+    delete(fileTree(layout.projectDirectory.dir("release")) {
+        include("*.jar", "*.zip")
+    })
+}
 
-    doLast{
-        println("Publishing plugin to release directory")
-        // copy file from build/libs to ./release
-        val pluginFile = file("build/libs/${project.name}-${project.version}.jar")
-        val releaseDir = file("release")
-        releaseDir.mkdirs()
-        pluginFile.copyTo(file("release/${pluginFile.name}"), true)
-    }
+tasks.register<Copy>("publishPluginLocal") {
+    group = "publish"
+    description = "Build and copy the plugin distribution to the release directory"
+    dependsOn("buildPlugin", cleanLocalReleasePackages)
+    from(layout.buildDirectory.file("distributions/${project.name}-${project.version}.zip"))
+    into(layout.projectDirectory.dir("release"))
 }
